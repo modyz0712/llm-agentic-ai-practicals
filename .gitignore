@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+.env.*
+
+# Generated local indexes and runtime state
+*_db/
+chroma/
+chroma_index/
+.chroma/
+*.sqlite3
+*.bin
+*.jsonl
+
+# Raw archives and submission packages
+*.zip
+*.7z
+*.rar
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+desktop.ini
