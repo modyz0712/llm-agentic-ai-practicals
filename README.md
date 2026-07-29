@@ -1,107 +1,164 @@
-# LLM and Agentic AI Practicals
+<div align="center">
 
-Practical LangChain work for structured extraction, support-ticket routing, and retrieval-augmented question answering.
+# 🧠 LLM and Agentic AI Practicals
+
+**Three explainable LangChain workflows for structured extraction, conditional routing, and policy-grounded retrieval.**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-![LangChain](https://img.shields.io/badge/LangChain-Runnable%20Chains-1C3C3C?style=flat-square)
-![OpenAI](https://img.shields.io/badge/OpenAI-gpt--4o--mini-412991?style=flat-square&logo=openai&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-0.3.7-1C3C3C?style=flat-square)
 ![Chroma](https://img.shields.io/badge/Vector%20Store-Chroma-5B4B8A?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![OpenAI](https://img.shields.io/badge/Models-OpenAI-412991?style=flat-square&logo=openai&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-16A34A?style=flat-square)
 
-## Overview
+</div>
 
-This repository is a curated public copy of hands-on LLM and agentic AI practical work. It focuses on small, explainable workflows that demonstrate how to build useful LLM applications with structured outputs, validation logic, retrieval, metadata filtering, and grounded response generation.
+## 🎯 Product Promise
 
-The repo intentionally avoids raw assignment packaging. Old drafts, generated vector databases, rubric files, teammate/reference notebooks, and private school-only materials are excluded so the public version stays clean and portfolio-ready.
+Turn unstructured language into predictable application behavior. These workflows show how an LLM can extract typed fields, route incomplete support requests, and answer policy questions from retrieved source context instead of relying on unsupported memory.
 
-## What This Shows
+## 🔎 Problem
 
-- Structured data extraction from messy customer-support messages.
-- Runnable chain composition with LangChain Expression Language.
-- Missing-field validation and conditional routing.
-- PDF ingestion with hierarchical parsing and chunk metadata.
-- Chroma-based retrieval with section and subsection filtering.
-- Query transformation, scope guardrails, context compression, and grounded answer generation.
-- Notebook-based RAG assistant workflow that can be rerun with an OpenAI API key.
+Useful LLM systems need more than a prompt. Inputs may be incomplete, output shapes must remain stable, retrieval can be too narrow or noisy, and generated answers need clear source boundaries. The implementations in this repository make those decisions visible through schemas, runnable branches, metadata filters, fallback retrieval, and source-labelled context.
 
-## Repository Structure
+## ✨ Capabilities: Three Practical Workflows
 
-```text
-.
-├── assignment1/
-│   ├── structured_extraction_chain.py
-│   └── support_ticket_router.py
-├── documents/
-│   └── attendance_policy_source.pdf
-├── notebooks/
-│   └── attendance_policy_rag_assistant.ipynb
-├── requirements.txt
-├── LICENSE
-└── README.md
+| Workflow | Input | Implemented behavior | Exposed result |
+|---|---|---|---|
+| Structured extraction | Free-form support message | `ChatPromptTemplate` and JSON-mode structured output map seven fields into a fixed schema | `extraction_chain` runnable |
+| Support ticket routing | Extracted support fields | Validation counts missing required values, then branches to deterministic clarification, model-generated follow-up, or normal response | `full_chain` runnable |
+| Policy RAG | Attendance policy PDF and a question | Hierarchical parsing, metadata-aware indexing, scope checks, query compilation, routed retrieval, source-context packing, and grounded response generation | Notebook assistant with streaming and debug state |
+
+### Structured fields
+
+`user_name`, `product_name`, `model_name`, `serial_number`, `issue`, `issue_description`, and `inquiry`
+
+## 🗺️ Verified Architecture
+
+The diagram is derived from the committed Python modules and notebook. It illustrates control flow only and does not represent fabricated model output.
+
+```mermaid
+flowchart LR
+    subgraph Support["Support message workflows"]
+        A["Free-form message"] --> B["Prompt + JSON schema"]
+        B --> C["gpt-4o-mini structured output"]
+        C --> D["Validated field dictionary"]
+        D --> E{"Missing required fields?"}
+        E -->|"None"| F["Normal response chain"]
+        E -->|"One"| G["Deterministic clarification"]
+        E -->|"Multiple"| H["Model-generated follow-up"]
+    end
+
+    subgraph RAG["Policy retrieval workflow"]
+        P["Policy PDF"] --> Q["PyPDFLoader"]
+        Q --> R["Hierarchical parser"]
+        R --> S["600-character chunks + list preservation"]
+        S --> T["Section, subsection, page, chunk metadata"]
+        T --> U["OpenAI embeddings"]
+        U --> V[("Chroma")]
+
+        W["User question"] --> X{"Scope guardrail"}
+        X -->|"Out of scope"| Y["Bounded refusal"]
+        X -->|"In scope"| Z["Standalone query compiler"]
+        Z --> AA["Section and subsection routing"]
+        AA --> AB["Parallel filtered similarity retrieval"]
+        AB --> AC{"Enough source context?"}
+        AC -->|"No"| AD["Section MMR, then global MMR fallback"]
+        AC -->|"Yes"| AE["Deduplicate, sort, and pack source context"]
+        AD --> AE
+        V --> AB
+        V --> AD
+        AE --> AF["Grounded responder"]
+        AF --> AG["Answer with source labels"]
+    end
 ```
 
-## Practical Work
+## 🔬 Workflow Details
 
-### 1. Structured Extraction Chain
+### 1. Structured extraction
 
-`assignment1/structured_extraction_chain.py` builds a LangChain runnable that extracts customer-support fields into a consistent JSON schema. It handles names, product details, serial numbers, issue labels, issue descriptions, and user inquiries from free-form text.
+- Uses `ChatOpenAI` with temperature `0`.
+- Requests JSON-mode structured output against a seven-field schema.
+- Represents missing values as empty strings for predictable downstream checks.
+- Composes the prompt, model, and schema through LangChain Expression Language.
 
-### 2. Support Ticket Router
+### 2. Ticket routing
 
-`assignment1/support_ticket_router.py` extends the extraction chain with validation and routing. If one required field is missing, it returns a short clarification message. If multiple fields are missing, it uses the model to generate a polite follow-up. If the ticket is complete, it routes the case to a normal support-response chain.
+- Checks five required routing fields after extraction.
+- Produces a direct clarification when exactly one field is absent.
+- Routes multiple missing fields to a concise follow-up chain.
+- Sends complete cases to a separate support-response chain through `RunnableBranch`.
 
-### 3. Attendance Policy RAG Assistant
+### 3. Policy RAG
 
-`notebooks/attendance_policy_rag_assistant.ipynb` demonstrates a RAG assistant over a PDF policy document. The workflow includes:
+- Loads the included PDF with `PyPDFLoader`.
+- Parses numbered sections and subsections in one pass and removes document noise.
+- Splits text at 600 characters with 100-character overlap, then repairs split enumerated lists.
+- Indexes `text-embedding-3-small` vectors in Chroma with section, subsection, page, and chunk metadata.
+- Applies a scope guardrail, conversation-aware query compilation, and two-stage metadata routing.
+- Retrieves subsection context in parallel, widening to section and global MMR fallbacks when needed.
+- Deduplicates and orders chunks before packing provenance labels for grounded generation.
+- Exposes a debug snapshot and a notebook widget interface for inspecting the workflow.
 
-- loading and parsing a PDF source document,
-- cleaning repeated headers and table-of-contents noise,
-- preserving numbered-list content during chunking,
-- enriching chunks with section and subsection metadata,
-- indexing chunks with Chroma,
-- compiling conversational queries into standalone retrieval queries,
-- rejecting out-of-scope queries before retrieval,
-- routing queries to relevant document sections and subsections,
-- packing evidence with provenance labels, and
-- generating grounded answers with source references.
+## 🛠️ Technology
 
-## Setup
+| Area | Technology |
+|---|---|
+| LLM orchestration | LangChain, LCEL runnables, prompts, branches, and parsers |
+| Models | OpenAI `gpt-4o-mini` and `text-embedding-3-small` |
+| Retrieval | Chroma, similarity search, MMR fallback, and metadata filters |
+| Document processing | PyPDF, custom hierarchical parsing, recursive text splitting |
+| Interface | Jupyter Notebook and `ipywidgets` |
+| Language | Python 3.10+ |
 
-Install the dependencies in a Python environment:
+## 🚀 Setup and Run
 
-```bash
-pip install -r requirements.txt
-```
+1. Create and activate a virtual environment:
 
-Set your OpenAI API key before running the examples:
+   ```bash
+   python -m venv .venv
+   ```
 
-```bash
-set OPENAI_API_KEY=your_api_key
-```
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   ```
 
-For Google Colab, the notebook is prepared to read the key from Colab userdata. For local Jupyter use, adjust the setup cell to read from your environment.
+   ```bash
+   source .venv/bin/activate
+   ```
 
-## Running The Examples
+2. Install dependencies:
 
-The Python chain files expose reusable LangChain runnables:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
 
-```python
-from assignment1.structured_extraction_chain import extraction_chain
+3. Set an OpenAI API key only when you are ready to execute model or embedding calls:
 
-result = extraction_chain.invoke(
-    "Hi, I am Alex. My iPhone 13 serial number is SN12345. The screen flickers after charging."
-)
-print(result)
-```
+   ```powershell
+   $env:OPENAI_API_KEY = "your-key"
+   ```
 
-The RAG notebook can be opened in Jupyter or Colab. The source PDF is included under `documents/`, while generated Chroma index folders are intentionally not committed because they can be rebuilt from the notebook.
+   ```bash
+   export OPENAI_API_KEY="your-key"
+   ```
 
-## Notes
+4. Start Jupyter and open the policy assistant notebook:
 
-- This is a portfolio-oriented public version of practical LLM work.
-- API keys, generated vector stores, zipped submissions, grading documents, and unrelated reference notebooks are excluded.
-- Some notebook outputs come from an interactive Colab workflow; rerun the notebook after setting an API key to reproduce fresh outputs.
+   ```bash
+   python -m jupyter notebook
+   ```
 
-## License
+The standalone modules export `extraction_chain` and `full_chain` for integration into another Python process. Importing them initializes `ChatOpenAI`, so configure the environment before invocation.
 
-This project is released under the MIT License.
+## ✅ Validation and Boundaries
+
+- The two Python modules were inspected for schema, validation, and branch behavior; the notebook contains 19 code cells and no committed execution outputs.
+- Architecture claims are tied to committed code and do not depend on a generated example response.
+- Model and embedding execution requires a valid OpenAI API key, network access, and available service quota.
+- The policy assistant is bounded to the included source document and explicitly rejects out-of-scope questions.
+- Chroma data is generated at runtime and is not committed.
+- The workflows are reference implementations, not a hosted API or production support service.
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
