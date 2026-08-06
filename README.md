@@ -99,6 +99,54 @@ flowchart LR
 - Deduplicates and orders chunks before packing provenance labels for grounded generation.
 - Exposes a debug snapshot and a notebook widget interface for inspecting the workflow.
 
+## Deterministic and Model-Controlled Boundaries
+
+| Decision | Implementation |
+|---|---|
+| Required support fields | Deterministic Python list and missing-value count |
+| One missing field | Deterministic clarification template |
+| Several missing fields | LLM-generated concise follow-up |
+| Complete support request | Separate model response chain |
+| RAG scope and route suggestions | Prompted model decisions with defensive keyword fallback |
+| Retrieval widening | Deterministic subsection, section MMR, then global MMR sequence |
+| Evidence ordering and labels | Deterministic deduplication, sorting, and context packing |
+| Final policy answer | LLM constrained to packed source evidence |
+
+This separation keeps validation, branch selection, and evidence handling
+inspectable while using the model where language interpretation or generation is
+valuable. It also makes failures easier to diagnose than one large prompt.
+
+### Retrieval failure modes and responses
+
+- **Question outside the document:** the scope guardrail refuses it before
+  retrieval and generation consume further model calls.
+- **Follow-up lacks context:** the query compiler turns it into a standalone
+  retrieval sentence using the conversation state.
+- **Metadata route is too narrow:** retrieval widens from selected subsections to
+  section-level MMR and finally global MMR.
+- **Enumerated list is split:** ingestion post-processing rejoins continuation
+  chunks so one retrieved unit contains the complete rule.
+- **Evidence is missing:** the assistant returns an insufficient-evidence answer
+  rather than filling the gap from general model knowledge.
+
+## Technical Checkpoints
+
+| Topic | Source checkpoint |
+|---|---|
+| Seven-field structured extraction | `assignment1/structured_extraction_chain.py` |
+| Missing-field inspection and routing | `assignment1/support_ticket_router.py` |
+| Hierarchical parsing and list repair | `notebooks/attendance_policy_rag_assistant.ipynb`, ingestion section |
+| Scope, query compilation, and metadata routing | Same notebook, query-processing section |
+| Retrieval fallback and evidence packing | Same notebook, retrieval section |
+| Demo queries and expected grounding | Same notebook, validation section |
+
+## Project Context
+
+These are Ian Hong's practical exercises from an LLM and Agentic AI course,
+reorganized as reusable workflow examples rather than a hosted product. They show
+orchestration, retrieval, and guardrail decisions; they do not claim model
+training, fine-tuning, production evaluation, or operation at scale.
+
 ## 🛠️ Technology
 
 | Area | Technology |
